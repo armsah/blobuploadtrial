@@ -54,7 +54,7 @@ pipeline {
                 bat 'if exist deploy.zip del deploy.zip'
                 bat 'git archive --format=zip --output=deploy.zip HEAD'
                 bat 'tar -tf deploy.zip'
-    }
-}
+            }
+        }
     }
 }
