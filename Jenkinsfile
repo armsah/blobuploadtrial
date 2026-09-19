@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        AZURE_CONFIG_DIR = "${WORKSPACE}\\.azure"
+    }
+
     stages {
         stage('Environment') {
             steps {
@@ -73,5 +77,11 @@ pipeline {
             }
         }
     }
+
+    post {
+    always {
+        bat 'if exist .azure rmdir /s /q .azure'
+    }
+}
     
 }
