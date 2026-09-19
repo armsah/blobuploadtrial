@@ -63,6 +63,3 @@ def test_blob_endpoint(monkeypatch):
         "blob": "hello.txt",
         "content": "Test blob content"
     }
-    
-def test_ci_failure_demo():
-    assert False, "Intentional CI failure demonstration"
