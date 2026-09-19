@@ -56,5 +56,20 @@ pipeline {
                 bat 'tar -tf deploy.zip'
             }
         }
+
+        stage('Deploy to Azure') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'azure-client-id', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
+                ]) {
+                     bat 'az login --service-principal --username "%AZURE_CLIENT_ID%" --password "%AZURE_CLIENT_SECRET%" --tenant "%AZURE_TENANT_ID%" --output none'
+
+                     bat 'az webapp deploy --name armen-storage-demo-2026 --resource-group rg-azure-learning --src-path deploy.zip --type zip'
+                }
+            }
+        }
     }
+    
 }
