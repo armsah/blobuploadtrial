@@ -26,5 +26,11 @@ pipeline {
                 bat '.venv\\Scripts\\python.exe -m py_compile app.py'
             }
         }
+
+        stage('Unit Tests') {
+            steps {
+                bat '.venv\\Scripts\\python.exe -m pytest -v'
+            }
+        }
     }
 }
