@@ -2,3 +2,4 @@
 .gitattributes export-ignore
 Jenkinsfile export-ignore
 tests/ export-ignore
+hello.txt export-ignore
