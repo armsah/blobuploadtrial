@@ -3,3 +3,4 @@
 Jenkinsfile export-ignore
 tests/ export-ignore
 hello.txt export-ignore
+requirements-dev.txt export-ignore
