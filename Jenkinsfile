@@ -9,6 +9,12 @@ pipeline {
             }
         }
 
+        stage('Azure CLI') {
+            steps {
+                bat 'az version'
+            }
+        }
+
         stage('Create Virtual Environment') {
             steps {
                 bat 'python -m venv .venv'
