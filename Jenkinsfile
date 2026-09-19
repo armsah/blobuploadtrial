@@ -27,6 +27,7 @@ pipeline {
 
         stage('Create Virtual Environment') {
             steps {
+                bat 'if exist .venv rmdir /s /q .venv'
                 bat 'python -m venv .venv'
             }
         }
