@@ -3,6 +3,8 @@ pipeline {
 
     environment {
         AZURE_CONFIG_DIR = "${WORKSPACE}\\.azure"
+        AZURE_RESOURCE_GROUP = "rg-azure-learning"
+        AZURE_WEBAPP_NAME = "armen-storage-demo-2026"
     }
 
     stages {
@@ -55,7 +57,7 @@ pipeline {
                 ]) {
                         bat 'az login --service-principal --username "%AZURE_CLIENT_ID%" --password "%AZURE_CLIENT_SECRET%" --tenant "%AZURE_TENANT_ID%" --output none'
 
-                        bat 'az webapp show --name armen-storage-demo-2026 --resource-group rg-azure-learning --query "{name:name,state:state,location:location}" --output table'
+                        bat 'az webapp show --name "%AZURE_WEBAPP_NAME%" --resource-group "%AZURE_RESOURCE_GROUP%" --query "{name:name,state:state,location:location}" --output table'
 
                         bat 'az account show --query "{name:name,user:user.name,type:user.type}" --output table'
                 }
@@ -65,7 +67,7 @@ pipeline {
 
         stage('Deploy to Azure') {
             steps {
-                bat 'az webapp deploy --name armen-storage-demo-2026 --resource-group rg-azure-learning --src-path deploy.zip --type zip'
+                bat 'az webapp deploy --name "%AZURE_WEBAPP_NAME%" --resource-group "%AZURE_RESOURCE_GROUP%" --src-path deploy.zip --type zip'
             }
         }
 
