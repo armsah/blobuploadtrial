@@ -16,21 +16,11 @@ pipeline {
                     string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
                     string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
                 ]) {
-                    bat '''
-                        az login --service-principal ^
-                           --username "%AZURE_CLIENT_ID%" ^
-                           --password "%AZURE_CLIENT_SECRET%" ^
-                           --tenant "%AZURE_TENANT_ID%" ^
-                           --output none
+                        bat 'az login --service-principal --username "%AZURE_CLIENT_ID%" --password "%AZURE_CLIENT_SECRET%" --tenant "%AZURE_TENANT_ID%" --output none'
 
-                        az webapp show ^
-                          --name armen-storage-demo-2026 ^
-                          --resource-group rg-azure-learning ^
-                          --query "{name:name,state:state,location:location}" ^
-                          --output table
+                        bat 'az webapp show --name armen-storage-demo-2026 --resource-group rg-azure-learning --query "{name:name,state:state,location:location}" --output table'
 
-                        az account show --query "{name:name, user:user.name, type:user.type}" --output table
-                    '''
+                        bat 'az account show --query "{name:name,user:user.name,type:user.type}" --output table'
                 }
             }
         }
