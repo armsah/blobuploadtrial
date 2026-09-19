@@ -46,6 +46,10 @@ pipeline {
                 bat 'if exist deploy.zip del deploy.zip'
                 bat 'git archive --format=zip --output=deploy.zip HEAD'
                 bat 'tar -tf deploy.zip'
+                bat '''
+                    powershell -NoProfile -Command ^
+                        "$files = @(tar -tf deploy.zip); $expected = @('app.py', 'requirements.txt'); if (Compare-Object $files $expected) { Write-Host 'Unexpected deployment artifact contents:'; $files; throw 'Deployment artifact validation failed' }; Write-Host 'Deployment artifact validated:' $files"
+                '''
             }
         }
 
