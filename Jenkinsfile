@@ -77,12 +77,22 @@ pipeline {
                 '''
             }
         }
+
+        stage('Blob Integration Test') {
+            steps {
+                bat '''
+                    powershell -NoProfile -Command ^
+                        "$response = Invoke-RestMethod -Uri 'https://armen-storage-demo-2026.azurewebsites.net/blob'; if ($response.container -ne 'documents') { throw 'Unexpected container' }; if ($response.blob -ne 'hello.txt') { throw 'Unexpected blob' }; if (-not $response.content) { throw 'Blob content is empty' }; Write-Host 'Blob integration test passed:' $response.blob"
+                '''
+            }
+        }
+
     }
 
     post {
-    always {
-        bat 'if exist .azure rmdir /s /q .azure'
+        always {
+            bat 'if exist .azure rmdir /s /q .azure'
+        }
     }
-}
     
 }
