@@ -23,6 +23,12 @@ pipeline {
                            --tenant "%AZURE_TENANT_ID%" ^
                            --output none
 
+                        az webapp show ^
+                          --name armen-storage-demo-2026 ^
+                          --resource-group rg-azure-learning ^
+                          --query "{name:name,state:state,location:location}" ^
+                          --output table
+
                         az account show --query "{name:name, user:user.name, type:user.type}" --output table
                     '''
                 }
