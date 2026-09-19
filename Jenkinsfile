@@ -70,6 +70,15 @@ pipeline {
                 }
             }
         }
+
+        stage('Smoke Test') {
+            steps {
+                bat '''
+                    powershell -NoProfile -Command ^
+                        "$response = Invoke-RestMethod -Uri 'https://armen-storage-demo-2026.azurewebsites.net/health'; if ($response.status -ne 'healthy') { throw 'Health check failed' }; Write-Host 'Health check passed:' $response.status"
+                '''
+            }
+        }
     }
     
 }
