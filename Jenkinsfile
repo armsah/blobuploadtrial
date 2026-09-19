@@ -9,15 +9,21 @@ pipeline {
             }
         }
 
+        stage('Create Virtual Environment') {
+            steps {
+                bat 'python -m venv .venv'
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
-                bat 'python -m pip install -r requirements.txt'
+                bat '.venv\\Scripts\\python.exe -m pip install -r requirements.txt'
             }
         }
 
         stage('Verify Application') {
             steps {
-                bat 'python -m py_compile app.py'
+                bat '.venv\\Scripts\\python.exe -m py_compile app.py'
             }
         }
     }
