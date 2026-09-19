@@ -29,3 +29,37 @@ def test_root_endpoint():
     assert response.json() == {
         "message": "Azure Blob Storage Demo API"
     }   
+    
+def test_blob_endpoint(monkeypatch):
+    class FakeDownloadStream:
+        def readall(self):
+            return b"Test blob content"
+
+    class FakeBlobClient:
+        def download_blob(self):
+            return FakeDownloadStream()
+
+    class FakeContainerClient:
+        def get_blob_client(self, blob_name):
+            assert blob_name == "hello.txt"
+            return FakeBlobClient()
+
+    class FakeBlobServiceClient:
+        def get_container_client(self, container_name):
+            assert container_name == "documents"
+            return FakeContainerClient()
+
+    monkeypatch.setattr(
+        app,
+        "get_blob_service_client",
+        lambda: FakeBlobServiceClient()
+    )
+
+    response = client.get("/blob")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "container": "documents",
+        "blob": "hello.txt",
+        "content": "Test blob content"
+    }

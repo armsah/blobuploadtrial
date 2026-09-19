@@ -26,3 +26,32 @@ def health():
     return {
         "status": "healthy"
     }
+    
+def get_blob_service_client():
+    credential = DefaultAzureCredential()
+
+    return BlobServiceClient(
+        account_url=ACCOUNT_URL,
+        credential=credential
+    )
+    
+@app.get("/blob")
+def get_blob():
+    blob_service_client = get_blob_service_client()
+
+    container_client = blob_service_client.get_container_client(
+        CONTAINER_NAME
+    )
+
+    blob_client = container_client.get_blob_client(
+        BLOB_NAME
+    )
+
+    download_stream = blob_client.download_blob()
+    content = download_stream.readall()
+
+    return {
+        "container": CONTAINER_NAME,
+        "blob": BLOB_NAME,
+        "content": content.decode("utf-8")
+    }
