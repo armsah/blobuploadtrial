@@ -9,9 +9,23 @@ pipeline {
             }
         }
 
-        stage('Azure CLI') {
+        stage('Azure Authentication') {
             steps {
-                bat 'az version'
+                withCredentials([
+                    string(credentialsId: 'azure-client-id', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
+                ]) {
+                    bat '''
+                        az login --service-principal ^
+                           --username "%AZURE_CLIENT_ID%" ^
+                           --password "%AZURE_CLIENT_SECRET%" ^
+                           --tenant "%AZURE_TENANT_ID%" ^
+                           --output none
+
+                        az account show --query "{name:name, user:user.name, type:user.type}" --output table
+                    '''
+                }
             }
         }
 
