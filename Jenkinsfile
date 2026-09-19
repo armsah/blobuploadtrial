@@ -76,7 +76,7 @@ pipeline {
             steps {
                 bat '''
                     powershell -NoProfile -Command ^
-                        "$response = Invoke-RestMethod -Uri '${APP_BASE_URL}/health'; if ($response.status -ne 'healthy') { throw 'Health check failed' }; Write-Host 'Health check passed:' $response.status"
+                        "$response = Invoke-RestMethod -Uri \\"$env:APP_BASE_URL/health\\"; if ($response.status -ne 'healthy') { throw 'Health check failed' }; Write-Host 'Health check passed:' $response.status"
                 '''
             }
         }
@@ -85,7 +85,7 @@ pipeline {
             steps {
                 bat '''
                     powershell -NoProfile -Command ^
-                        "$response = Invoke-RestMethod -Uri '${APP_BASE_URL}/blob'; if ($response.container -ne 'documents') { throw 'Unexpected container' }; if ($response.blob -ne 'hello.txt') { throw 'Unexpected blob' }; if (-not $response.content) { throw 'Blob content is empty' }; Write-Host 'Blob integration test passed:' $response.blob"
+                        "$response = Invoke-RestMethod -Uri \\"$env:APP_BASE_URL/blob\\"; if ($response.container -ne 'documents') { throw 'Unexpected container' }; if ($response.blob -ne 'hello.txt') { throw 'Unexpected blob' }; if (-not $response.content) { throw 'Blob content is empty' }; Write-Host 'Blob integration test passed:' $response.blob"
                 '''
             }
         }
