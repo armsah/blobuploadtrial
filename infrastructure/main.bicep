@@ -1,5 +1,6 @@
 param location string = 'northeurope'
 param appServiceLocation string = 'westeurope'
+param jenkinsPrincipalId string
 
 param appServicePlanName string = 'plan-azure-learning'
 param webAppName string = 'armen-storage-demo-2026'
@@ -11,6 +12,11 @@ param blobName string = 'hello.txt'
 var storageBlobDataContributorRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
   'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+)
+
+var websiteContributorRoleDefinitionId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  'de139f84-1756-47ae-9be6-808fbbe84772'
 )
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
@@ -79,6 +85,16 @@ resource storageBlobDataRoleAssignment 'Microsoft.Authorization/roleAssignments@
   properties: {
     roleDefinitionId: storageBlobDataContributorRoleDefinitionId
     principalId: webApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource jenkinsWebsiteContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(webApp.id, jenkinsPrincipalId, websiteContributorRoleDefinitionId)
+  scope: webApp
+  properties: {
+    roleDefinitionId: websiteContributorRoleDefinitionId
+    principalId: jenkinsPrincipalId
     principalType: 'ServicePrincipal'
   }
 }
