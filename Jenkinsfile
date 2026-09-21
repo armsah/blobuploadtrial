@@ -6,6 +6,9 @@ pipeline {
         AZURE_RESOURCE_GROUP = "rg-azure-learning"
         AZURE_WEBAPP_NAME = "armen-storage-demo-2026"
         APP_BASE_URL = "https://${AZURE_WEBAPP_NAME}.azurewebsites.net"
+        AZURE_BICEP_FILE = "infrastructure\\main.bicep"
+        AZURE_DEPLOYMENT_NAME = "application-infrastructure"
+        JENKINS_APP_PRINCIPAL_ID = "7288611a-48dd-45bc-9b02-7bbf46403aa2"
     }
 
     stages {
@@ -38,6 +41,68 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 bat '.venv\\Scripts\\python.exe -m pytest -v'
+            }
+        }
+
+        stage('Build Infrastructure') {
+            steps {
+                bat 'az bicep build --file "%AZURE_BICEP_FILE%" --stdout > NUL'
+            }
+        }
+
+        stage('Azure Infrastructure Authentication') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'azure-infra-client-id', variable: 'AZURE_INFRA_CLIENT_ID'),
+                    string(credentialsId: 'azure-infra-client-secret', variable: 'AZURE_INFRA_CLIENT_SECRET'),
+                    string(credentialsId: 'azure-infra-tenant-id', variable: 'AZURE_INFRA_TENANT_ID')
+                ]) {
+                    bat '''
+                        az login --service-principal ^
+                            --username "%AZURE_INFRA_CLIENT_ID%" ^
+                            --password "%AZURE_INFRA_CLIENT_SECRET%" ^
+                            --tenant "%AZURE_INFRA_TENANT_ID%" ^
+                            --output none
+                    '''
+
+                    bat 'az account show --query "{identity:user.name,type:user.type}" --output table'
+                }
+            }
+        }
+
+        stage('Validate Infrastructure') {
+            steps {
+                bat '''
+                    az deployment group validate ^
+                        --resource-group "%AZURE_RESOURCE_GROUP%" ^
+                        --template-file "%AZURE_BICEP_FILE%" ^
+                        --parameters jenkinsPrincipalId="%JENKINS_APP_PRINCIPAL_ID%" ^
+                        --output none
+                '''
+            }
+        }
+
+        stage('Infrastructure What-If') {
+            steps {
+                bat '''
+                    az deployment group what-if ^
+                        --resource-group "%AZURE_RESOURCE_GROUP%" ^
+                        --template-file "%AZURE_BICEP_FILE%" ^
+                        --parameters jenkinsPrincipalId="%JENKINS_APP_PRINCIPAL_ID%"
+                '''
+            }
+        }
+
+        stage('Deploy Infrastructure') {
+            steps {
+                bat '''
+                    az deployment group create ^
+                        --resource-group "%AZURE_RESOURCE_GROUP%" ^
+                        --template-file "%AZURE_BICEP_FILE%" ^
+                        --parameters jenkinsPrincipalId="%JENKINS_APP_PRINCIPAL_ID%" ^
+                        --name "%AZURE_DEPLOYMENT_NAME%" ^
+                        --output none
+                '''
             }
         }
 
