@@ -159,6 +159,29 @@ pipeline {
             }
         }
 
+        stage('Test AI endpoint') {
+            steps {
+                powershell '''
+                    $body = @{
+                        message = "Read hello.txt and tell me what it contains."
+                    } | ConvertTo-Json
+
+                    $response = Invoke-RestMethod `
+                        -Method Post `
+                        -Uri "https://armen-storage-demo-2026.azurewebsites.net/ai" `
+                        -ContentType "application/json" `
+                        -Body $body
+
+                    if ([string]::IsNullOrWhiteSpace($response.answer)) {
+                        throw "AI smoke test failed: response.answer is empty."
+                   }
+
+                    Write-Host "AI endpoint smoke test passed."
+                    Write-Host "Answer received successfully."
+                '''
+            }
+        }
+
     }
 
     post {
