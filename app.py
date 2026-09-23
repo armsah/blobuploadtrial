@@ -1,7 +1,10 @@
+# Container learning
+
 import os
 import json
 
 from pydantic import BaseModel
+from rag_service import answer_question
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import OpenAI
 from fastapi import FastAPI
@@ -22,6 +25,10 @@ AI_DEPLOYMENT = os.getenv(
     "gpt-5-mini-learning",
 )
 
+class RagRequest(BaseModel):
+    question: str
+
+
 class AIRequest(BaseModel):
     message: str
 
@@ -29,6 +36,10 @@ app = FastAPI(
     title="Azure Blob Storage Demo",
     version="1.0.0",
 )
+
+@app.post("/rag")
+def rag(request: RagRequest):
+    return answer_question(request.question)
 
 @app.get("/")
 def root():

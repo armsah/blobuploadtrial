@@ -166,3 +166,30 @@ def test_ai_endpoint_tool_call(monkeypatch):
     assert body["usage"]["input_tokens"] == 10
     assert body["usage"]["output_tokens"] == 5
     assert body["usage"]["total_tokens"] == 15
+    
+def test_rag_endpoint(monkeypatch):
+    def fake_answer_question(question):
+        assert question == "How should an Azure app authenticate?"
+        return {
+            "answer": "Use managed identity.",
+            "sources": ["azure-identity"],
+        }
+
+    monkeypatch.setattr("app.answer_question", fake_answer_question)
+
+    response = client.post(
+        "/rag",
+        json={"question": "How should an Azure app authenticate?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "answer": "Use managed identity.",
+        "sources": ["azure-identity"],
+    }
+
+
+def test_rag_requires_question():
+    response = client.post("/rag", json={})
+
+    assert response.status_code == 422

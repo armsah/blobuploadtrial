@@ -113,7 +113,7 @@ pipeline {
                 bat 'tar -tf deploy.zip'
                 bat '''
                     powershell -NoProfile -Command ^
-                        "$files = @(tar -tf deploy.zip); $expected = @('app.py', 'requirements.txt'); if (Compare-Object $files $expected) { Write-Host 'Unexpected deployment artifact contents:'; $files; throw 'Deployment artifact validation failed' }; Write-Host 'Deployment artifact validated:' $files"
+                        "$files = @(tar -tf deploy.zip); $expected = @('app.py', 'rag_service.py', 'requirements.txt'); if (Compare-Object $files $expected) { Write-Host 'Unexpected deployment artifact contents:'; $files; throw 'Deployment artifact validation failed' }; Write-Host 'Deployment artifact validated:' $files"
                 '''
             }
         }

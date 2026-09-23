@@ -2,11 +2,14 @@ param location string = 'northeurope'
 param appServiceLocation string = 'westeurope'
 param jenkinsPrincipalId string
 
+param searchServiceName string = 'search-armen-learning-2026'
+param foundryLocation string = 'swedencentral'
 param foundryResourceName string = 'foundry-armen-sweden-2026'
 param appServicePlanName string = 'plan-azure-learning'
 param webAppName string = 'armen-storage-demo-2026'
 param pythonVersion string = '3.14'
 param storageAccountName string = 'starmenlearning2026'
+param containerRegistryName string = 'acrarmenlearning2026'
 param blobContainerName string = 'documents'
 param blobName string = 'hello.txt'
 
@@ -25,8 +28,80 @@ var websiteContributorRoleDefinitionId = subscriptionResourceId(
   'de139f84-1756-47ae-9be6-808fbbe84772'
 )
 
-resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' existing = {
+var searchIndexDataReaderRoleDefinitionId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  '1407120a-92aa-4202-b7e9-c0e197c71c8f'
+)
+
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2025-04-01' = {
+  name: containerRegistryName
+  location: 'northeurope'
+
+  sku: {
+    name: 'Basic'
+  }
+
+  properties: {
+    adminUserEnabled: false
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+output containerRegistryLoginServer string = containerRegistry.properties.loginServer
+
+resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: foundryResourceName
+  location: foundryLocation
+  kind: 'AIServices'
+  sku: {
+    name: 'S0'
+  }
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    customSubDomainName: foundryResourceName
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+resource chatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundryAccount
+  name: 'gpt-5-mini-learning'
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 10
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'gpt-5-mini'
+      version: '2025-08-07'
+    }
+    versionUpgradeOption: 'NoAutoUpgrade'
+  }
+}
+
+resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundryAccount
+  name: 'embedding-learning'
+
+  dependsOn: [
+    chatDeployment
+  ]
+
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 10
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'text-embedding-3-small'
+      version: '1'
+    }
+    versionUpgradeOption: 'NoAutoUpgrade'
+  }
 }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2025-06-01' = {
@@ -88,6 +163,10 @@ resource webAppSettings 'Microsoft.Web/sites/config@2025-03-01' = {
 
     AZURE_AI_ENDPOINT: 'https://${foundryResourceName}.openai.azure.com/openai/v1/'
     AZURE_AI_DEPLOYMENT: 'gpt-5-mini-learning'
+    AZURE_AI_EMBEDDING_DEPLOYMENT: 'embedding-learning'
+
+    AZURE_SEARCH_ENDPOINT: 'https://${searchServiceName}.search.windows.net'
+    AZURE_SEARCH_INDEX: 'rag_documents'
 
     SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
   }
@@ -119,6 +198,41 @@ resource jenkinsWebsiteContributorRoleAssignment 'Microsoft.Authorization/roleAs
   properties: {
     roleDefinitionId: websiteContributorRoleDefinitionId
     principalId: jenkinsPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource searchService 'Microsoft.Search/searchServices@2025-05-01' = {
+  name: searchServiceName
+  location: 'northeurope'
+
+  sku: {
+    name: 'free'
+  }
+
+  properties: {
+    replicaCount: 1
+    partitionCount: 1
+    publicNetworkAccess: 'enabled'
+    disableLocalAuth: false
+
+    authOptions: {
+      aadOrApiKey: {
+        aadAuthFailureMode: 'http401WithBearerChallenge'
+      }
+    }
+  }
+}
+
+output searchEndpoint string = 'https://${searchService.name}.search.windows.net'
+
+resource searchReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(searchService.id, webApp.id, 'search-index-data-reader')
+  scope: searchService
+
+  properties: {
+    roleDefinitionId: searchIndexDataReaderRoleDefinitionId
+    principalId: webApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
