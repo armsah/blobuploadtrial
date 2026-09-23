@@ -5,3 +5,9 @@ tests/ export-ignore
 hello.txt export-ignore
 requirements-dev.txt export-ignore
 infrastructure/ export-ignore
+Dockerfile export-ignore
+.dockerignore export-ignore
+create_search_index.py export-ignore
+ingest_rag.py export-ignore
+rag_demo.py export-ignore
+search_rag.py export-ignore
