@@ -166,7 +166,7 @@ resource webAppSettings 'Microsoft.Web/sites/config@2025-03-01' = {
     AZURE_AI_EMBEDDING_DEPLOYMENT: 'embedding-learning'
 
     AZURE_SEARCH_ENDPOINT: 'https://${searchServiceName}.search.windows.net'
-    AZURE_SEARCH_INDEX: 'rag_documents'
+    AZURE_SEARCH_INDEX: 'rag-documents'
 
     SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
   }
