@@ -99,30 +99,39 @@ pipeline {
                     string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
                 ]) {
                     bat '''
-                        if exist "%WORKSPACE%\\.kube-ci" rmdir /s /q "%WORKSPACE%\\.kube-ci"
-                        mkdir "%WORKSPACE%\\.kube-ci"
-
-                        set KUBECONFIG=%WORKSPACE%\\.kube-ci\\config
-
                         az login --service-principal ^
                             --username "%AZURE_CLIENT_ID%" ^
                             --password "%AZURE_CLIENT_SECRET%" ^
                             --tenant "%AZURE_TENANT_ID%" ^
                             --output none
+                    '''
 
+                    bat '''
+                        if exist "%WORKSPACE%\\.kube-ci" rmdir /s /q "%WORKSPACE%\\.kube-ci"
+                        mkdir "%WORKSPACE%\\.kube-ci"
+                    '''
+
+                    bat '''
+                        set KUBECONFIG=%WORKSPACE%\\.kube-ci\\config
                         az aks get-credentials ^
                             --resource-group rg-azure-learning ^
                             --name aks-armen-learning-2026 ^
                             --file "%KUBECONFIG%" ^
                             --overwrite-existing
-
+                    '''
+                    
+                    bat '''
+                        set KUBECONFIG=%WORKSPACE%\\.kube-ci\\config
                         helm upgrade --install storage-demo helm\\storage-demo ^
                             --namespace storage-demo ^
                             --set image.digest="%IMAGE_DIGEST%" ^
                             --wait ^
                             --atomic ^
                             --timeout 5m
+                    '''  
 
+                    bat '''
+                        set KUBECONFIG=%WORKSPACE%\\.kube-ci\\config
                         kubectl rollout status deployment/storage-demo ^
                             --namespace storage-demo ^
                             --timeout=180s
