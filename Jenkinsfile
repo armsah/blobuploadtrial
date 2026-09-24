@@ -44,6 +44,12 @@ pipeline {
             }
         }
 
+        stage('Docker Check') {
+            steps {
+                bat 'docker version'
+            }
+        }
+
         stage('Build Infrastructure') {
             steps {
                 bat 'az bicep build --file "%AZURE_BICEP_FILE%" --stdout > NUL'
