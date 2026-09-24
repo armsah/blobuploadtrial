@@ -14,6 +14,12 @@ pipeline {
             steps {
                 bat 'python --version'
                 bat 'git --version'
+                bat 'where helm'
+                bat 'helm version --short'
+                bat 'where kubectl'
+                bat 'kubectl version --client'
+                bat 'where kubelogin'
+                bat 'kubelogin --version'
             }
         }
 
