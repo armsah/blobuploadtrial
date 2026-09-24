@@ -68,11 +68,12 @@ pipeline {
                             --password "%AZURE_CLIENT_SECRET%" ^
                             --tenant "%AZURE_TENANT_ID%" ^
                             --output none
+                        '''
 
-                        az acr login --name acrarmenlearning2026
+                        bat 'az acr login --name acrarmenlearning2026'
 
-                        docker push "%IMAGE%"
-                    '''
+                        bat 'docker push "%IMAGE%"'
+                    
                 }
             }
         }
@@ -81,13 +82,7 @@ pipeline {
             steps {
                 script {
                     env.IMAGE_DIGEST = bat(
-                        script: """
-                            az acr repository show ^
-                                --name acrarmenlearning2026 ^
-                                --image storage-demo:%IMAGE_TAG% ^
-                                --query digest ^
-                                --output tsv
-                        """,
+                        script: '@az acr repository show --name acrarmenlearning2026 --image storage-demo:%IMAGE_TAG% --query digest --output tsv',
                         returnStdout: true
                     ).trim()
 
