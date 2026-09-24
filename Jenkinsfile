@@ -125,6 +125,11 @@ pipeline {
                             --file "%KUBECONFIG%" ^
                             --overwrite-existing
                     '''
+
+                    bat '''
+                        set KUBECONFIG=%WORKSPACE%\\.kube-ci\\config
+                        kubelogin convert-kubeconfig -l azurecli
+                    '''
                     
                     bat '''
                         set KUBECONFIG=%WORKSPACE%\\.kube-ci\\config
