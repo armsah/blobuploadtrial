@@ -1,0 +1,44 @@
+replicaCount: 2
+
+image:
+  repository: acrarmenlearning2026.azurecr.io/storage-demo
+  digest: "sha256:31b2512dd550ea9e121fdd88890421a5ebccd9891eac88a630077decf5450aa2"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+serviceAccount:
+  name: storage-demo-sa
+  clientId: "5bdaa9fc-ed68-40f5-9666-414ca51143d5"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+
+config:
+  storageAccountName: starmenlearning2026
+  storageContainerName: documents
+  storageBlobName: hello.txt
+  aiEndpoint: https://foundry-armen-sweden-2026.openai.azure.com/openai/v1/
+  aiDeployment: gpt-5-mini-learning
+  aiEmbeddingDeployment: embedding-learning
+  searchEndpoint: https://search-armen-learning-2026.search.windows.net
+  searchIndex: rag-documents

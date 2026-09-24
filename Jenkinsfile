@@ -4,11 +4,9 @@ pipeline {
     environment {
         AZURE_CONFIG_DIR = "${WORKSPACE}\\.azure"
         AZURE_RESOURCE_GROUP = "rg-azure-learning"
-        AZURE_WEBAPP_NAME = "armen-storage-demo-2026"
-        APP_BASE_URL = "https://${AZURE_WEBAPP_NAME}.azurewebsites.net"
-        AZURE_BICEP_FILE = "infrastructure\\main.bicep"
-        AZURE_DEPLOYMENT_NAME = "application-infrastructure"
-        JENKINS_APP_PRINCIPAL_ID = "7288611a-48dd-45bc-9b02-7bbf46403aa2"
+        ACR_NAME = "acrarmenlearning2026"
+        AKS_NAME = "aks-armen-learning-2026"
+        AKS_NAMESPACE = "storage-demo"
     }
 
     stages {
@@ -44,156 +42,106 @@ pipeline {
             }
         }
 
-        stage('Docker Check') {
+        stage('Build Container') {
             steps {
-                bat 'docker version'
-            }
-        }
-
-        stage('Build Infrastructure') {
-            steps {
-                bat 'az bicep build --file "%AZURE_BICEP_FILE%" --stdout > NUL'
-            }
-        }
-
-        stage('Azure Infrastructure Authentication') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'azure-infra-client-id', variable: 'AZURE_INFRA_CLIENT_ID'),
-                    string(credentialsId: 'azure-infra-client-secret', variable: 'AZURE_INFRA_CLIENT_SECRET'),
-                    string(credentialsId: 'azure-infra-tenant-id', variable: 'AZURE_INFRA_TENANT_ID')
-                ]) {
-                    bat '''
-                        az login --service-principal ^
-                            --username "%AZURE_INFRA_CLIENT_ID%" ^
-                            --password "%AZURE_INFRA_CLIENT_SECRET%" ^
-                            --tenant "%AZURE_INFRA_TENANT_ID%" ^
-                            --output none
-                    '''
-
-                    bat 'az account show --query "{identity:user.name,type:user.type}" --output table'
+                script {
+                    env.IMAGE_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
+                    env.IMAGE = "acrarmenlearning2026.azurecr.io/storage-demo:${env.IMAGE_TAG}"
                 }
-            }
-        }
 
-        stage('Validate Infrastructure') {
-            steps {
                 bat '''
-                    az deployment group validate ^
-                        --resource-group "%AZURE_RESOURCE_GROUP%" ^
-                        --template-file "%AZURE_BICEP_FILE%" ^
-                        --parameters jenkinsPrincipalId="%JENKINS_APP_PRINCIPAL_ID%" ^
-                        --output none
+                    docker build -t "%IMAGE%" .
                 '''
             }
         }
 
-        stage('Infrastructure What-If') {
-            steps {
-                bat '''
-                    az deployment group what-if ^
-                        --resource-group "%AZURE_RESOURCE_GROUP%" ^
-                        --template-file "%AZURE_BICEP_FILE%" ^
-                        --parameters jenkinsPrincipalId="%JENKINS_APP_PRINCIPAL_ID%"
-                '''
-            }
-        }
-
-        stage('Deploy Infrastructure') {
-            steps {
-                bat '''
-                    az deployment group create ^
-                        --resource-group "%AZURE_RESOURCE_GROUP%" ^
-                        --template-file "%AZURE_BICEP_FILE%" ^
-                        --parameters jenkinsPrincipalId="%JENKINS_APP_PRINCIPAL_ID%" ^
-                        --name "%AZURE_DEPLOYMENT_NAME%" ^
-                        --output none
-                '''
-            }
-        }
-
-        stage('Package Application') {
-            steps {
-                bat 'if exist deploy.zip del deploy.zip'
-                bat 'git archive --format=zip --output=deploy.zip HEAD'
-                bat 'tar -tf deploy.zip'
-                bat '''
-                    powershell -NoProfile -Command ^
-                        "$files = @(tar -tf deploy.zip); $expected = @('app.py', 'rag_service.py', 'requirements.txt'); if (Compare-Object $files $expected) { Write-Host 'Unexpected deployment artifact contents:'; $files; throw 'Deployment artifact validation failed' }; Write-Host 'Deployment artifact validated:' $files"
-                '''
-            }
-        }
-
-        stage('Azure Authentication') {
+        stage('Push to ACR') {
             steps {
                 withCredentials([
                     string(credentialsId: 'azure-client-id', variable: 'AZURE_CLIENT_ID'),
                     string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
                     string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
                 ]) {
-                        bat 'az login --service-principal --username "%AZURE_CLIENT_ID%" --password "%AZURE_CLIENT_SECRET%" --tenant "%AZURE_TENANT_ID%" --output none'
+                    bat '''
+                        az login --service-principal ^
+                            --username "%AZURE_CLIENT_ID%" ^
+                            --password "%AZURE_CLIENT_SECRET%" ^
+                            --tenant "%AZURE_TENANT_ID%" ^
+                            --output none
 
-                        bat 'az webapp show --name "%AZURE_WEBAPP_NAME%" --resource-group "%AZURE_RESOURCE_GROUP%" --query "{name:name,state:state,location:location}" --output table'
+                        az acr login --name acrarmenlearning2026
 
-                        bat 'az account show --query "{name:name,user:user.name,type:user.type}" --output table'
+                        docker push "%IMAGE%"
+                    '''
                 }
             }
         }
 
-
-        stage('Deploy to Azure') {
+        stage('Resolve Image Digest') {
             steps {
-                bat 'az webapp deploy --name "%AZURE_WEBAPP_NAME%" --resource-group "%AZURE_RESOURCE_GROUP%" --src-path deploy.zip --type zip'
+                script {
+                    env.IMAGE_DIGEST = bat(
+                        script: """
+                            az acr repository show ^
+                                --name acrarmenlearning2026 ^
+                                --image storage-demo:%IMAGE_TAG% ^
+                                --query digest ^
+                                --output tsv
+                        """,
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Deploying immutable digest: ${env.IMAGE_DIGEST}"
+                }
             }
         }
 
-        stage('Smoke Test') {
+        stage('Deploy to AKS') {
             steps {
-                bat '''
-                    powershell -NoProfile -Command ^
-                        "$response = Invoke-RestMethod -Uri \\"$env:APP_BASE_URL/health\\"; if ($response.status -ne 'healthy') { throw 'Health check failed' }; Write-Host 'Health check passed:' $response.status"
-                '''
+                withCredentials([
+                    string(credentialsId: 'azure-client-id', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
+                ]) {
+                    bat '''
+                        if exist "%WORKSPACE%\\.kube-ci" rmdir /s /q "%WORKSPACE%\\.kube-ci"
+                        mkdir "%WORKSPACE%\\.kube-ci"
+
+                        set KUBECONFIG=%WORKSPACE%\\.kube-ci\\config
+
+                        az login --service-principal ^
+                            --username "%AZURE_CLIENT_ID%" ^
+                            --password "%AZURE_CLIENT_SECRET%" ^
+                            --tenant "%AZURE_TENANT_ID%" ^
+                            --output none
+
+                        az aks get-credentials ^
+                            --resource-group rg-azure-learning ^
+                            --name aks-armen-learning-2026 ^
+                            --file "%KUBECONFIG%" ^
+                            --overwrite-existing
+
+                        helm upgrade --install storage-demo helm\\storage-demo ^
+                            --namespace storage-demo ^
+                            --set image.digest="%IMAGE_DIGEST%" ^
+                            --wait ^
+                            --atomic ^
+                            --timeout 5m
+
+                        kubectl rollout status deployment/storage-demo ^
+                            --namespace storage-demo ^
+                            --timeout=180s
+                    '''
+                }
             }
         }
-
-        stage('Blob Integration Test') {
-            steps {
-                bat '''
-                    powershell -NoProfile -Command ^
-                        "$response = Invoke-RestMethod -Uri \\"$env:APP_BASE_URL/blob\\"; if ($response.container -ne 'documents') { throw 'Unexpected container' }; if ($response.blob -ne 'hello.txt') { throw 'Unexpected blob' }; if (-not $response.content) { throw 'Blob content is empty' }; Write-Host 'Blob integration test passed:' $response.blob"
-                '''
-            }
-        }
-
-        stage('Test AI endpoint') {
-            steps {
-                powershell '''
-                    $body = @{
-                        message = "Read hello.txt and tell me what it contains."
-                    } | ConvertTo-Json
-
-                    $response = Invoke-RestMethod `
-                        -Method Post `
-                        -Uri "https://armen-storage-demo-2026.azurewebsites.net/ai" `
-                        -ContentType "application/json" `
-                        -Body $body
-
-                    if ([string]::IsNullOrWhiteSpace($response.answer)) {
-                        throw "AI smoke test failed: response.answer is empty."
-                   }
-
-                    Write-Host "AI endpoint smoke test passed."
-                    Write-Host "Answer received successfully."
-                '''
-            }
-        }
-
     }
 
     post {
         always {
+            bat 'az logout 2>NUL || exit /b 0'
             bat 'if exist .azure rmdir /s /q .azure'
+            bat 'if exist .kube-ci rmdir /s /q .kube-ci'
         }
     }
-    
 }
