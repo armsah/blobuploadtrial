@@ -9,3 +9,11 @@ deploy.zip
 deploy-test.zip
 infrastructure/main.json
 infrastructure/bootstrap.json
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
